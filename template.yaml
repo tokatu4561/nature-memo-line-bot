@@ -11,6 +11,10 @@ Parameters:
     Type: String
   LineBotChannelToken:
     Type: String
+  ApiUrl:
+    Type: String
+  ApiToken:
+    Type: String
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
@@ -39,26 +43,9 @@ Resources:
         Variables:
           LINE_BOT_CHANNEL_SECRET: !Ref LineBotChannelSecret
           LINE_BOT_CHANNEL_TOKEN: !Ref LineBotChannelToken
+          API_URL: !Ref ApiUrl
+          API_TOKEN: !Ref ApiToken
           TABLE_NAME: sample_table
-
-  SlackFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-    Properties:
-      CodeUri: cmd/slack-bot-task/
-      Handler: slack-bot-task
-      Runtime: go1.x
-      Architectures:
-        - x86_64
-      Events:
-        CatchAll:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-          Properties:
-            Path: /slack-bot
-            Method: POST
-      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
-        Variables:
-          LINE_BOT_CHANNEL_SECRET: !Ref LineBotChannelSecret
-          LINE_BOT_CHANNEL_TOKEN: !Ref LineBotChannelToken
 
   SampleTable:
     Type: AWS::DynamoDB::Table
