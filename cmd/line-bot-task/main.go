@@ -17,7 +17,7 @@ import (
 	"github.com/tokatu4561/nature-memo-line-bot/line"
 )
 
-type Appliances struct {
+type Appliance struct {
 	Id string
 	Type string
 	Nickname string
@@ -68,21 +68,21 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 						}, nil
 					}
 				case "照明":
-					appliances, err := fetchAppliances()
-					if err != nil {
-						log.Println(err)
-						return events.APIGatewayProxyResponse{
-							Body:       err.Error(),
-							StatusCode: 500,
-						}, nil
-					}
+					// appliances, err := fetchAppliances()
+					// if err != nil {
+					// 	log.Println(err)
+					// 	return events.APIGatewayProxyResponse{
+					// 		Body:       err.Error(),
+					// 		StatusCode: 500,
+					// 	}, nil
+					// }
 
-					var lightApp *Appliances
-					for _, appliance := range appliances {
-						if (appliance.Type == "light") {
-							lightApp = appliance
-						}
-					}
+					// var lightApp *Appliance
+					// for _, appliance := range appliances {
+					// 	if (appliance.Type == "light") {
+					// 		lightApp = appliance
+					// 	}
+					// }
 				case "テレビ":
 				}
 				break
@@ -90,11 +90,21 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			}
 		} else if event.Type == linebot.EventTypePostback {
 			postBackData := event.Postback.Data
+
+			appliances, err := fetchAppliances()
+
+			var lightApp *Appliance
+			for _, appliance := range appliances {
+				if (appliance.Type == "LIGHT") {
+					lightApp = appliance
+				}
+			}
+
 			switch postBackData {
 			case "on":
-				err = postRequest("エアコン", true)
+				err = switchPowerAppliance(lightApp, true)
 			case "off":
-				err = postRequest("エアコン", false)
+				err = switchPowerAppliance(lightApp, false)
 			}
 			if err != nil {
 				return events.APIGatewayProxyResponse{
@@ -131,29 +141,20 @@ func setUpLineClient() (*line.Line, error) {
 	return line, nil
 }
 
-func postRequest(appliances string, on bool) error {
+func switchPowerAppliance(app *Appliance, on bool) error{
 	var switchText string
 	if (on) {
 		switchText = "on"
 	} else {
 		switchText = "off"
 	}
-
-	// requestBody := struct {
-	// 	Button string `json:"button"`
-	// }{
-	// 	Button: switchText,
-	// }
-	
-    // jsonString, err := json.Marshal(requestBody)
-    // if err != nil {
-    //    return err
-    // }
 	
 	values := url.Values{}
     values.Set("button", switchText)
 	
-    endpoint := fmt.Sprintf("%s/%s", os.Getenv("API_URL"), "1/appliances/3ab1a2c4-a8c8-4fa4-b004-22b045d2b43c/light")
+	baseUrl := os.Getenv("API_URL")
+	path := fmt.Sprintf("1/appliances/%s/%s", app.Id, strings.ToLower(app.Type))
+    endpoint := fmt.Sprintf("%s/%s", baseUrl, path)
 	
 	log.Println(switchText)
     req, err := http.NewRequest("POST", endpoint, strings.NewReader(values.Encode()))
@@ -179,7 +180,7 @@ func postRequest(appliances string, on bool) error {
 	return nil
 }
 
-func fetchAppliances() ([]*Appliances, error){
+func fetchAppliances() ([]*Appliance, error){
 	endpoint := fmt.Sprintf("%s/%s", os.Getenv("API_URL"), "1/appliances")
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
@@ -196,7 +197,7 @@ func fetchAppliances() ([]*Appliances, error){
         return nil, errors.New(fmt.Sprintf("http status code %d", res.StatusCode))
     }
 
-	var appliances []*Appliances
+	var appliances []*Appliance
 	decoder := json.NewDecoder(res.Body)
 
 	err = decoder.Decode(&appliances)
