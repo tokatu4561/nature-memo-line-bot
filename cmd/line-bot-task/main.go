@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,6 +16,12 @@ import (
 
 	"github.com/tokatu4561/nature-memo-line-bot/line"
 )
+
+type Appliances struct {
+	Id string
+	Type string
+	Nickname string
+}
 
 const AWS_REGION = "ap-northeast-1"
 const DYNAMO_ENDPOINT = "http://dynamodb:8000"
@@ -60,6 +68,21 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 						}, nil
 					}
 				case "照明":
+					appliances, err := fetchAppliances()
+					if err != nil {
+						log.Println(err)
+						return events.APIGatewayProxyResponse{
+							Body:       err.Error(),
+							StatusCode: 500,
+						}, nil
+					}
+
+					var lightApp *Appliances
+					for _, appliance := range appliances {
+						if (appliance.Type == "light") {
+							lightApp = appliance
+						}
+					}
 				case "テレビ":
 				}
 				break
@@ -67,7 +90,6 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			}
 		} else if event.Type == linebot.EventTypePostback {
 			postBackData := event.Postback.Data
-			log.Println("通過1")
 			switch postBackData {
 			case "on":
 				err = postRequest("エアコン", true)
@@ -127,6 +149,7 @@ func postRequest(appliances string, on bool) error {
     // if err != nil {
     //    return err
     // }
+	
 	values := url.Values{}
     values.Set("button", switchText)
 	
@@ -154,6 +177,34 @@ func postRequest(appliances string, on bool) error {
     }
 
 	return nil
+}
+
+func fetchAppliances() ([]*Appliances, error){
+	endpoint := fmt.Sprintf("%s/%s", os.Getenv("API_URL"), "1/appliances")
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+        return nil, err
+    }
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("API_TOKEN")))
+
+	client := new(http.Client)
+	res, _ := client.Do(req)
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+        return nil, errors.New(fmt.Sprintf("http status code %d", res.StatusCode))
+    }
+
+	var appliances []*Appliances
+	decoder := json.NewDecoder(res.Body)
+
+	err = decoder.Decode(&appliances)
+    if err != nil {
+        return nil, err
+    }
+
+	return appliances, nil
 }
 
 func main() {
