@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/line/line-bot-sdk-go/linebot"
-
 	"github.com/tokatu4561/nature-memo-line-bot/line"
 )
 
@@ -24,10 +23,9 @@ type Appliance struct {
 }
 
 const AWS_REGION = "ap-northeast-1"
-const DYNAMO_ENDPOINT = "http://dynamodb:8000"
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	line, err := setUpLineClient()
+	line, err := line.SetUpLineClient()
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: "LINE接続エラー", StatusCode: 500}, err
 	}
@@ -119,26 +117,6 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		Body:       fmt.Sprintf("Hello, %v", string("hello")),
 		StatusCode: 200,
 	}, nil
-}
-
-
-func setUpLineClient() (*line.Line, error) {
-	line := &line.Line{
-		ChannelSecret: os.Getenv("LINE_BOT_CHANNEL_SECRET"),
-		ChannelToken:  os.Getenv("LINE_BOT_CHANNEL_TOKEN"),
-	}
-
-	bot, err := linebot.New(
-		line.ChannelSecret,
-		line.ChannelToken,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	line.Client = bot
-
-	return line, nil
 }
 
 func switchPowerAppliance(app *Appliance, on bool) error{

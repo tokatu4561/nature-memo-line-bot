@@ -2,6 +2,7 @@ package line
 
 import (
 	"encoding/json"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/line/line-bot-sdk-go/linebot"
@@ -12,6 +13,25 @@ type Line struct {
 	ChannelSecret string
 	ChannelToken  string
 	Client        *linebot.Client
+}
+
+func SetUpLineClient() (*Line, error) {
+	line := &Line{
+		ChannelSecret: os.Getenv("LINE_BOT_CHANNEL_SECRET"),
+		ChannelToken:  os.Getenv("LINE_BOT_CHANNEL_TOKEN"),
+	}
+
+	bot, err := linebot.New(
+		line.ChannelSecret,
+		line.ChannelToken,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	line.Client = bot
+
+	return line, nil
 }
 
 func (l *Line) ParseRequest(r events.APIGatewayProxyRequest) ([]*linebot.Event, error) {
