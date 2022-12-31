@@ -22,6 +22,14 @@ type Appliance struct {
 	Nickname string
 }
 
+type ApplianceType string
+
+const (
+	Tv = ApplianceType("TV")
+	Aircon = ApplianceType("AC")
+	Light = ApplianceType("LIGHT")
+)
+
 const AWS_REGION = "ap-northeast-1"
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -46,9 +54,8 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 				switch replyMessage {
 				case "エアコン":
 					actions := []linebot.TemplateAction {
-						// linebot.NewPostbackAction("On", "appliances={air}&status=on", "on", "on"),
-						linebot.NewPostbackAction("On", "on", "on", ""),
-						linebot.NewPostbackAction("Off","off", "off", ""),
+						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Aircon), "on", "on"),
+						linebot.NewPostbackAction("Off",fmt.Sprintf("%s,off", Aircon), "off", ""),
 					}
 					res := linebot.NewTemplateMessage(
 						"エアコンの電源を入れますか？",
@@ -56,61 +63,73 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 					)
 
 					_, err = line.Client.ReplyMessage(event.ReplyToken, res).Do()
-
-					log.Println(err)
-
-					if err != nil {
-						return events.APIGatewayProxyResponse{
-							Body:       err.Error(),
-							StatusCode: 500,
-						}, nil
-					}
 				case "照明":
-					// appliances, err := fetchAppliances()
-					// if err != nil {
-					// 	log.Println(err)
-					// 	return events.APIGatewayProxyResponse{
-					// 		Body:       err.Error(),
-					// 		StatusCode: 500,
-					// 	}, nil
-					// }
+					actions := []linebot.TemplateAction {
+						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Light), "on", "on"),
+						linebot.NewPostbackAction("Off",fmt.Sprintf("%s,off", Light), "off", ""),
+					}
+					res := linebot.NewTemplateMessage(
+						"照明の電源を入れますか？",
+						linebot.NewButtonsTemplate("", "照明の電源を入れますか？", "please select", actions...),
+					)
 
-					// var lightApp *Appliance
-					// for _, appliance := range appliances {
-					// 	if (appliance.Type == "light") {
-					// 		lightApp = appliance
-					// 	}
-					// }
+					_, err = line.Client.ReplyMessage(event.ReplyToken, res).Do()
 				case "テレビ":
+					actions := []linebot.TemplateAction {
+						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Tv), "on", "on"),
+						linebot.NewPostbackAction("Off",fmt.Sprintf("%s,off", Tv), "off", ""),
+					}
+					res := linebot.NewTemplateMessage(
+						"テレビの電源を入れますか？",
+						linebot.NewButtonsTemplate("", "テレビの電源を入れますか？", "please select", actions...),
+					)
+
+					_, err = line.Client.ReplyMessage(event.ReplyToken, res).Do()
+				default:
 				}
-				break
-			default:
+
+				if err != nil {
+					return events.APIGatewayProxyResponse{
+						Body:       errors.New("fetch err").Error(),
+						StatusCode: 500,
+					}, err
+				}
 			}
 		} else if event.Type == linebot.EventTypePostback {
 			postBackData := event.Postback.Data
+			applianceData := strings.Split(postBackData, ",")[0]
+			onOffData := strings.Split(postBackData, ",")[1]
 
 			appliances, err := fetchAppliances()
+			if err != nil {
+				return events.APIGatewayProxyResponse{
+					Body:       errors.New("fetch err").Error(),
+					StatusCode: 500,
+				}, err
+			}
 
 			var lightApp *Appliance
 			for _, appliance := range appliances {
-				if (appliance.Type == "LIGHT") {
+				if (appliance.Type == applianceData) {
 					lightApp = appliance
 				}
 			}
 
-			switch postBackData {
-			case "on":
-				err = switchPowerAppliance(lightApp, true)
-			case "off":
-				err = switchPowerAppliance(lightApp, false)
+			switch onOffData {
+				case "on":
+					err = switchPowerAppliance(lightApp, true)
+				case "off":
+					err = switchPowerAppliance(lightApp, false)
+				default:
 			}
+
 			if err != nil {
 				return events.APIGatewayProxyResponse{
-					Body:       err.Error(),
+					Body:       errors.New("nature remo err").Error(),
 					StatusCode: 500,
-				}, nil
+				}, err
 			}
-		} else {}
+		}
 	}
 
 	return events.APIGatewayProxyResponse{
@@ -131,7 +150,7 @@ func switchPowerAppliance(app *Appliance, on bool) error{
     values.Set("button", switchText)
 	
 	baseUrl := os.Getenv("API_URL")
-	path := fmt.Sprintf("1/appliances/%s/%s", app.Id, strings.ToLower(app.Type))
+	path := fmt.Sprintf("1/appliances/%s/%s", app.Id, app.ApiPath())
     endpoint := fmt.Sprintf("%s/%s", baseUrl, path)
 	
 	log.Println(switchText)
@@ -184,6 +203,20 @@ func fetchAppliances() ([]*Appliance, error){
     }
 
 	return appliances, nil
+}
+
+func (a *Appliance) ApiPath() string {
+	switch a.Type {
+	case string(Tv):
+		return "tv"
+	case string(Aircon):
+		return "aircon_settings"
+	case string(Light):
+		return "light"
+	default:
+	}
+
+	return ""
 }
 
 func main() {
