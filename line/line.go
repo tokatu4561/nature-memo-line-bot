@@ -44,3 +44,11 @@ func (l *Line) ParseRequest(r events.APIGatewayProxyRequest) ([]*linebot.Event, 
 
 	return req.Events, nil
 }
+
+// NewSelectMessage select button message
+func (l *Line) NewSelectMessage(displayMsg string, selectActions ...linebot.TemplateAction) *linebot.TemplateMessage {
+	return linebot.NewTemplateMessage(
+		"エアコンの電源を入れますか？",
+		linebot.NewButtonsTemplate("", "エアコンの電源を入れますか？", "please select", selectActions...),
+	)
+}

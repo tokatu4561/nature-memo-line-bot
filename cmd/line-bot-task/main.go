@@ -54,35 +54,26 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 				switch replyMessage {
 				case "エアコン":
 					actions := []linebot.TemplateAction {
-						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Aircon), "on", "on"),
+						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Aircon), "on", ""),
 						linebot.NewPostbackAction("Off",fmt.Sprintf("%s,off", Aircon), "off", ""),
 					}
-					res := linebot.NewTemplateMessage(
-						"エアコンの電源を入れますか？",
-						linebot.NewButtonsTemplate("", "エアコンの電源を入れますか？", "please select", actions...),
-					)
+					res := line.NewSelectMessage("エアコンの電源を入れますか？", actions...)
 
 					_, err = line.Client.ReplyMessage(event.ReplyToken, res).Do()
 				case "照明":
 					actions := []linebot.TemplateAction {
-						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Light), "on", "on"),
+						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Light), "on", ""),
 						linebot.NewPostbackAction("Off",fmt.Sprintf("%s,off", Light), "off", ""),
 					}
-					res := linebot.NewTemplateMessage(
-						"照明の電源を入れますか？",
-						linebot.NewButtonsTemplate("", "照明の電源を入れますか？", "please select", actions...),
-					)
+					res := line.NewSelectMessage("照明の電源を入れますか？", actions...)
 
 					_, err = line.Client.ReplyMessage(event.ReplyToken, res).Do()
 				case "テレビ":
 					actions := []linebot.TemplateAction {
-						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Tv), "on", "on"),
+						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Tv), "on", ""),
 						linebot.NewPostbackAction("Off",fmt.Sprintf("%s,off", Tv), "off", ""),
 					}
-					res := linebot.NewTemplateMessage(
-						"テレビの電源を入れますか？",
-						linebot.NewButtonsTemplate("", "テレビの電源を入れますか？", "please select", actions...),
-					)
+					res := line.NewSelectMessage("テレビの電源を入れますか？", actions...)
 
 					_, err = line.Client.ReplyMessage(event.ReplyToken, res).Do()
 				default:
