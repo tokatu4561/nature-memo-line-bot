@@ -46,73 +46,16 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	for _, event := range lineEvents {
 		// イベントがメッセージの受信だった場合
 		if event.Type == linebot.EventTypeMessage {
-			switch message := event.Message.(type) {
+			err := handleTextMsgEvent(line, event)
 
-			case *linebot.TextMessage:
-				replyMessage := message.Text
-
-				switch replyMessage {
-				case "エアコン":
-					actions := []linebot.TemplateAction {
-						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Aircon), "on", ""),
-						linebot.NewPostbackAction("Off",fmt.Sprintf("%s,off", Aircon), "off", ""),
-					}
-					res := line.NewSelectMessage("エアコンの電源を入れますか？", actions...)
-
-					_, err = line.Client.ReplyMessage(event.ReplyToken, res).Do()
-				case "照明":
-					actions := []linebot.TemplateAction {
-						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Light), "on", ""),
-						linebot.NewPostbackAction("Off",fmt.Sprintf("%s,off", Light), "off", ""),
-					}
-					res := line.NewSelectMessage("照明の電源を入れますか？", actions...)
-
-					_, err = line.Client.ReplyMessage(event.ReplyToken, res).Do()
-				case "テレビ":
-					actions := []linebot.TemplateAction {
-						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Tv), "on", ""),
-						linebot.NewPostbackAction("Off",fmt.Sprintf("%s,off", Tv), "off", ""),
-					}
-					res := line.NewSelectMessage("テレビの電源を入れますか？", actions...)
-
-					_, err = line.Client.ReplyMessage(event.ReplyToken, res).Do()
-				default:
-				}
-
-				if err != nil {
-					return events.APIGatewayProxyResponse{
-						Body:       errors.New("fetch err").Error(),
-						StatusCode: 500,
-					}, err
-				}
-			}
-		} else if event.Type == linebot.EventTypePostback {
-			postBackData := event.Postback.Data
-			applianceData := strings.Split(postBackData, ",")[0]
-			onOffData := strings.Split(postBackData, ",")[1]
-
-			appliances, err := fetchAppliances()
 			if err != nil {
 				return events.APIGatewayProxyResponse{
-					Body:       errors.New("fetch err").Error(),
+					Body:      err.Error(),
 					StatusCode: 500,
 				}, err
 			}
-
-			var lightApp *Appliance
-			for _, appliance := range appliances {
-				if (appliance.Type == applianceData) {
-					lightApp = appliance
-				}
-			}
-
-			switch onOffData {
-				case "on":
-					err = switchPowerAppliance(lightApp, true)
-				case "off":
-					err = switchPowerAppliance(lightApp, false)
-				default:
-			}
+		} else if event.Type == linebot.EventTypePostback {
+			err := handlePostBackEvent(event)
 
 			if err != nil {
 				return events.APIGatewayProxyResponse{
@@ -124,7 +67,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	return events.APIGatewayProxyResponse{
-		Body:       fmt.Sprintf("Hello, %v", string("hello")),
+		Body:       "",
 		StatusCode: 200,
 	}, nil
 }
@@ -208,6 +151,86 @@ func (a *Appliance) ApiPath() string {
 	}
 
 	return ""
+}
+
+func handlePostBackEvent(event *linebot.Event) error {
+	postBackData := event.Postback.Data
+	applianceData := strings.Split(postBackData, ",")[0]
+	onOffData := strings.Split(postBackData, ",")[1]
+
+	appliances, err := fetchAppliances()
+	if err != nil {
+		return err
+	}
+
+	var lightApp *Appliance
+	for _, appliance := range appliances {
+		if (appliance.Type == applianceData) {
+			lightApp = appliance
+		}
+	}
+
+	switch onOffData {
+		case "on":
+			err = switchPowerAppliance(lightApp, true)
+		case "off":
+			err = switchPowerAppliance(lightApp, false)
+		default:
+	}
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func handleTextMsgEvent(line *line.Line, event *linebot.Event) error {
+	switch message := event.Message.(type) {
+		case *linebot.TextMessage:
+			replyMessage := message.Text
+
+			switch replyMessage {
+				case "エアコン":
+					actions := []linebot.TemplateAction {
+						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Aircon), "on", ""),
+						linebot.NewPostbackAction("Off",fmt.Sprintf("%s,off", Aircon), "off", ""),
+					}
+					res := line.NewSelectMessage("エアコンの電源を入れますか？", actions...)
+
+					_, err := line.Client.ReplyMessage(event.ReplyToken, res).Do()
+
+					if err != nil {
+						return err
+					}
+				case "照明":
+					actions := []linebot.TemplateAction {
+						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Light), "on", ""),
+						linebot.NewPostbackAction("Off",fmt.Sprintf("%s,off", Light), "off", ""),
+					}
+					res := line.NewSelectMessage("照明の電源を入れますか？", actions...)
+
+					_, err := line.Client.ReplyMessage(event.ReplyToken, res).Do()
+
+					if err != nil {
+						return err
+					}
+				case "テレビ":
+					actions := []linebot.TemplateAction {
+						linebot.NewPostbackAction("On", fmt.Sprintf("%s,on", Tv), "on", ""),
+						linebot.NewPostbackAction("Off",fmt.Sprintf("%s,off", Tv), "off", ""),
+					}
+					res := line.NewSelectMessage("テレビの電源を入れますか？", actions...)
+
+					_, err := line.Client.ReplyMessage(event.ReplyToken, res).Do()
+
+					if err != nil {
+						return err
+					}
+				default:
+			}
+	}
+
+	return nil
 }
 
 func main() {
