@@ -1,6 +1,7 @@
 
 # nature-remo-line-bot
-nature-remo を lineから操作する
+nature-remo を使って
+家電をlineから操作する
 
 ## nature remo
 https://home.nature.global/
